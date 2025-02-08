@@ -1,6 +1,44 @@
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 
 export default function Home() {
+  const [code, setCode] = useState('');
+  const [output, setOutput] = useState('');
+  const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'); // Use environment variable for production
+
+socket.on('connect', () => {
+  console.log('Socket connected');
+});
+
+socket.on('disconnect', () => {
+  console.log('Socket disconnected');
+});
+
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const executeCode = () => {
+    if (!code) {
+      setOutput('Please enter code to execute.');
+      return;
+    }
+    socket.emit('execute', code);
+  };
+
+  socket.on('result', (result: string) => {
+    setOutput(result);
+  });
+
+  socket.on('error', (error: string) => {
+    console.error('Socket error:', error);
+    setOutput('Error occurred while executing code.');
+  });
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
@@ -12,6 +50,16 @@ export default function Home() {
           height={38}
           priority
         />
+        <textarea
+          className="border p-2 w-full"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Write your code here..."
+        />
+        <button onClick={executeCode} className="bg-blue-500 text-white p-2 rounded">
+          Execute Code
+        </button>
+        <pre className="border p-2 w-full mt-4">{output}</pre>
         <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
           <li className="mb-2">
             Get started by editing{" "}
