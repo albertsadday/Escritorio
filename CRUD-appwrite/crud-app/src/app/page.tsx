@@ -1,25 +1,40 @@
+"use client"; // Add this directive to mark the file as a client component
+
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
 export default function Home() {
   const [code, setCode] = useState('');
   const [output, setOutput] = useState('');
-  const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'); // Use environment variable for production
-
-socket.on('connect', () => {
-  console.log('Socket connected');
-});
-
-socket.on('disconnect', () => {
-  console.log('Socket disconnected');
-});
+  let socket: Socket;
 
   useEffect(() => {
+    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'); // Use environment variable for production
+
+    socket.on('connect', () => {
+      console.log('Socket connected');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
     // Cleanup on unmount
     return () => {
       socket.disconnect();
     };
+  }, []);
+
+  useEffect(() => {
+    socket.on('result', (result: string) => {
+      setOutput(result);
+    });
+
+    socket.on('error', (error: string) => {
+      console.error('Socket error:', error);
+      setOutput('Error occurred while executing code.');
+    });
   }, []);
 
   const executeCode = () => {
@@ -29,15 +44,6 @@ socket.on('disconnect', () => {
     }
     socket.emit('execute', code);
   };
-
-  socket.on('result', (result: string) => {
-    setOutput(result);
-  });
-
-  socket.on('error', (error: string) => {
-    console.error('Socket error:', error);
-    setOutput('Error occurred while executing code.');
-  });
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
